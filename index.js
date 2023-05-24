@@ -21,7 +21,7 @@ const upload = multer({
 });
 
 // Route for file upload
-app.post("/upload", upload.single("file"), uploadController.processUpload);
+app.post("/upload", upload.array("files", 10), uploadController.processUpload);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
