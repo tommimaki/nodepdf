@@ -3,7 +3,6 @@ const { extractData, writeDataToExcel } = require("../utils/utils");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
-
 const processUpload = async (req, res) => {
   console.log("running");
 
@@ -53,7 +52,7 @@ const processUpload = async (req, res) => {
         const interval = setInterval(async () => {
           const pollingResponse = await axios.get(
             "https://api.oneai.com/api/v0/pipeline/async/tasks/" +
-              response.data.task_id,
+            response.data.task_id,
             { headers: config.headers }
           );
           if (pollingResponse.data.status !== "RUNNING") {
@@ -65,7 +64,6 @@ const processUpload = async (req, res) => {
 
       const result = await polling;
       let text = JSON.stringify(result);
-      console.log(text);
 
       const fileBuildingsData = extractData(
         text,
@@ -95,27 +93,45 @@ const processUpload = async (req, res) => {
                 }
               }
             }
-            console.log(`Floor: ${floor}`);
-            console.log(fileBuildingsData[building][floor]);
+
           }
         }
       }
 
       buildingsData = fileBuildingsData;
 
-      fs.unlinkSync(filePath);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
     //  Timestamping the output file
     const timestamp = Date.now();
     const outputFileName = `aluejako_${timestamp}.xlsx`;
     const outputFile = path.join(__dirname, outputFileName);
+    console.log(outputFile, 'file');
+
+
 
     // filling excel file extracted data  with
-    writeDataToExcel(buildingsData, outputFile);
+    // writeDataToExcel(buildingsData, outputFile);
+    await writeDataToExcel(buildingsData, outputFile);
 
-    // Remove the uploaded file
+    // Send the file to the client
+    res.download(outputFile, outputFileName, (err) => {
+      if (err) {
+        console.log(err);
+        res.status(500).send("An error occurred during file download.");
+      }
 
-    res.json({ message: "Files processed successfully." });
+      // Remove the downloaded file after sent to client
+
+      if (fs.existsSync(outputFile)) {
+        fs.unlinkSync(outputFile);
+      }
+
+
+    });
+
   } catch (error) {
     console.log(error);
     res.status(500).send("An error occurred during file upload.");
